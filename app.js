@@ -33,12 +33,13 @@ function genId() {
 }
 
 /** Create an empty farm object */
-function emptyFarm(name, jethi, bhagyo) {
+function emptyFarm(name, farmer, bhagyo, bhagyoPct) {
   return {
     id: genId(),
     farmName: name,
-    jethiName: jethi,
+    jethiName: farmer,
     bhagyoName: bhagyo,
+    bhagyoPercent: Number(bhagyoPct) || 50,
     expenses: [],
     incomes: [],
     udhars: [],
@@ -61,16 +62,16 @@ const state = {
 
   farms: [],
   currentFarmId: null,
-  newFarmForm: { farmName: '', jethiName: '', bhagyoName: '' },
+  newFarmForm: { farmName: '', jethiName: '', bhagyoName: '', bhagyoPercent: '50' },
 
   activeTab: 'dashboard',
   editingInfo: false,
-  infoForm: { farmName: '', jethiName: '', bhagyoName: '' },
+  infoForm: { farmName: '', jethiName: '', bhagyoName: '', bhagyoPercent: '50' },
 
   expForm: { date: todayStr(), category: EXPENSE_CATEGORIES[0], amount: '', note: '' },
   incForm: { date: todayStr(), crop: '', qty: '', unit: UNITS[0], rate: '', note: '' },
   udharForm: { date: todayStr(), type: 'given', amount: '', note: '' },
-  settleForm: { note: '', jethiPercent: 50, deductUdhar: false, deductAmount: '' },
+  settleForm: { note: '', deductUdhar: false, deductAmount: '' },
 
   confirmDelete: null,
   expandedSettlement: null,
@@ -307,12 +308,16 @@ function renderCreateFarm() {
             <input type="text" class="input" id="newFarmName" placeholder="e.g. Akhatar Vaadi" value="${esc(f.farmName)}">
           </div>
           <div class="form-group">
-            <label>Jethi (Farmer) Name</label>
+            <label>Farmer Naam</label>
             <input type="text" class="input" id="newJethiName" placeholder="e.g. Rameshbhai" value="${esc(f.jethiName)}">
           </div>
           <div class="form-group">
-            <label>Bhagyo (Partner) Name</label>
+            <label>Bhagyo (Partner) Naam</label>
             <input type="text" class="input" id="newBhagyoName" placeholder="e.g. Maheshbhai" value="${esc(f.bhagyoName)}">
+          </div>
+          <div class="form-group">
+            <label>Bhagyo Share %</label>
+            <input type="number" class="input" id="newBhagyoPercent" min="1" max="99" placeholder="50" value="${esc(f.bhagyoPercent)}">
           </div>
           ${state.authError ? `<p class="error-text">${esc(state.authError)}</p>` : ''}
           <button class="btn btn-primary btn-block" data-action="saveFarm">Create Farm</button>
@@ -391,8 +396,9 @@ function renderFarmBanner(farm) {
       <div class="farm-banner editing">
         <div class="form-row">
           <input type="text" class="input input-sm" id="editFarmName" placeholder="Farm Name" value="${esc(f.farmName)}">
-          <input type="text" class="input input-sm" id="editJethiName" placeholder="Jethi" value="${esc(f.jethiName)}">
+          <input type="text" class="input input-sm" id="editJethiName" placeholder="Farmer" value="${esc(f.jethiName)}">
           <input type="text" class="input input-sm" id="editBhagyoName" placeholder="Bhagyo" value="${esc(f.bhagyoName)}">
+          <input type="number" class="input input-sm" id="editBhagyoPercent" placeholder="Bhagyo %" min="1" max="99" value="${esc(f.bhagyoPercent)}">
         </div>
         <div class="banner-actions">
           <button class="icon-btn" data-action="saveInfo" title="Save"><i data-lucide="check" style="width:18px;height:18px;"></i></button>
@@ -404,7 +410,7 @@ function renderFarmBanner(farm) {
     <div class="farm-banner">
       <div class="banner-text">
         <strong>${esc(farm.farmName)}</strong>
-        <span>${esc(farm.jethiName || '—')} &amp; ${esc(farm.bhagyoName || '—')}</span>
+        <span>${esc(farm.jethiName || 'Farmer')} & ${esc(farm.bhagyoName || 'Bhagyo')} (${farm.bhagyoPercent || 50}%)</span>
       </div>
       <button class="icon-btn" data-action="editInfo" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
     </div>`;
@@ -421,8 +427,8 @@ function renderDashboard(farm) {
   const recent = getRecentActivity(farm);
 
   // Bhag system: Income split by %, Farmer bears kharch, Bhagyo has udhar deducted
-  const farmerPct = Number(state.settleForm.jethiPercent) || 50;
-  const bhagyoPct = 100 - farmerPct;
+  const bhagyoPct = Number(farm.bhagyoPercent) || 50;
+  const farmerPct = 100 - bhagyoPct;
   const farmerGross = Math.round(totalInc * farmerPct / 100);
   const bhagyoGross = Math.round(totalInc * bhagyoPct / 100);
   const farmerNet = farmerGross - totalExp;
@@ -522,7 +528,7 @@ function renderExpenses(farm) {
             <input type="text" class="input" id="expNote" placeholder="Optional" value="${esc(f.note)}">
           </div>
         </div>
-        <button class="btn btn-primary btn-block" data-action="addExpense" ${!f.amount ? 'disabled' : ''}>
+        <button class="btn btn-primary btn-block" data-action="addExpense">
           <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Expense
         </button>
       </div>
@@ -589,7 +595,7 @@ function renderIncome(farm) {
           <label>Note</label>
           <input type="text" class="input" id="incNote" placeholder="Optional" value="${esc(f.note)}">
         </div>
-        <button class="btn btn-primary btn-block" data-action="addIncome" ${!(f.crop && f.qty && f.rate) ? 'disabled' : ''}>
+        <button class="btn btn-primary btn-block" data-action="addIncome">
           <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Income
         </button>
       </div>
@@ -648,7 +654,7 @@ function renderUdhar(farm) {
           <label>Note</label>
           <input type="text" class="input" id="udharNote" placeholder="Optional" value="${esc(f.note)}">
         </div>
-        <button class="btn btn-primary btn-block" data-action="addUdhar" ${!f.amount ? 'disabled' : ''}>
+        <button class="btn btn-primary btn-block" data-action="addUdhar">
           <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Udhar
         </button>
       </div>
@@ -669,8 +675,8 @@ function renderSettlement(farm) {
   const udharBal = getUdharGiven(farm) - getUdharRepaid(farm);
 
   const f = state.settleForm;
-  const jethiPct = Number(f.jethiPercent) || 0;
-  const bhagyoPct = 100 - jethiPct;
+  const bhagyoPct = Number(farm.bhagyoPercent) || 50;
+  const jethiPct = 100 - bhagyoPct;
 
   // Bhag system: split INCOME (not profit), Farmer bears kharch, Bhagyo has udhar deducted
   const jethiShare = Math.round(totalInc * jethiPct / 100);
@@ -702,13 +708,6 @@ function renderSettlement(farm) {
         </div>
       </div>
 
-      <div class="section-card">
-        <h3 class="section-title">Farmer Share %</h3>
-        <div class="form-group">
-          <label>Jethi (Farmer) %</label>
-          <input type="number" class="input" id="settlePercent" min="0" max="100" value="${jethiPct}">
-        </div>
-      </div>
 
       <div class="share-preview">
         <div class="share-card share-farmer">
@@ -871,10 +870,12 @@ function bindEvents() {
   bindInput('newFarmName', v => { state.newFarmForm.farmName = v; });
   bindInput('newJethiName', v => { state.newFarmForm.jethiName = v; });
   bindInput('newBhagyoName', v => { state.newFarmForm.bhagyoName = v; });
+  bindInput('newBhagyoPercent', v => { state.newFarmForm.bhagyoPercent = v; });
 
   bindInput('editFarmName', v => { state.infoForm.farmName = v; });
   bindInput('editJethiName', v => { state.infoForm.jethiName = v; });
   bindInput('editBhagyoName', v => { state.infoForm.bhagyoName = v; });
+  bindInput('editBhagyoPercent', v => { state.infoForm.bhagyoPercent = v; });
 
   bindInput('expDate', v => { state.expForm.date = v; });
   bindInput('expCategory', v => { state.expForm.category = v; });
@@ -892,7 +893,7 @@ function bindEvents() {
   bindInput('udharAmount', v => { state.udharForm.amount = v; });
   bindInput('udharNote', v => { state.udharForm.note = v; });
 
-  bindInput('settlePercent', v => { state.settleForm.jethiPercent = v; });
+
   bindInput('settleNote', v => { state.settleForm.note = v; });
   bindInput('settleDeductAmt', v => { state.settleForm.deductAmount = v; });
 
@@ -981,7 +982,7 @@ function handleAction(action, dataset) {
         state.screen = 'farmSelect';
       } else {
         state.screen = 'createFarm';
-        state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '' };
+        state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '', bhagyoPercent: '50' };
       }
       render();
       break;
@@ -1004,7 +1005,7 @@ function handleAction(action, dataset) {
       state.currentProfile = newProfile;
       state.farms = [];
       state.screen = 'createFarm';
-      state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '' };
+      state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '', bhagyoPercent: '50' };
       state.authError = '';
       render();
       break;
@@ -1021,7 +1022,7 @@ function handleAction(action, dataset) {
     }
     case 'goCreateFarm':
       state.screen = 'createFarm';
-      state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '' };
+      state.newFarmForm = { farmName: '', jethiName: '', bhagyoName: '', bhagyoPercent: '50' };
       state.authError = '';
       render();
       break;
@@ -1033,7 +1034,7 @@ function handleAction(action, dataset) {
     case 'saveFarm': {
       const fn = state.newFarmForm.farmName.trim();
       if (!fn) { state.authError = 'Farm name is required.'; render(); break; }
-      const farm = emptyFarm(fn, state.newFarmForm.jethiName.trim(), state.newFarmForm.bhagyoName.trim());
+      const farm = emptyFarm(fn, state.newFarmForm.jethiName.trim(), state.newFarmForm.bhagyoName.trim(), state.newFarmForm.bhagyoPercent);
       state.farms.push(farm);
       persistFarms(state.farms);
       state.currentFarmId = farm.id;
@@ -1073,7 +1074,7 @@ function handleAction(action, dataset) {
     case 'editInfo': {
       const farm = getCurrentFarm();
       state.editingInfo = true;
-      state.infoForm = { farmName: farm.farmName, jethiName: farm.jethiName, bhagyoName: farm.bhagyoName };
+      state.infoForm = { farmName: farm.farmName, jethiName: farm.jethiName, bhagyoName: farm.bhagyoName, bhagyoPercent: String(farm.bhagyoPercent || 50) };
       render();
       break;
     }
@@ -1084,7 +1085,8 @@ function handleAction(action, dataset) {
         ...f,
         farmName: name,
         jethiName: state.infoForm.jethiName.trim(),
-        bhagyoName: state.infoForm.bhagyoName.trim()
+        bhagyoName: state.infoForm.bhagyoName.trim(),
+        bhagyoPercent: Number(state.infoForm.bhagyoPercent) || 50
       }));
       state.editingInfo = false;
       render();
@@ -1191,8 +1193,8 @@ function handleAction(action, dataset) {
 
       const totalExp = getTotalExpense(ue);
       const totalInc = getTotalIncome(ui);
-      const jethiPct = Number(state.settleForm.jethiPercent) || 0;
-      const bhagyoPct = 100 - jethiPct;
+      const bhagyoPct = Number(farm.bhagyoPercent) || 50;
+      const jethiPct = 100 - bhagyoPct;
       // Bhag system: split INCOME, not profit
       const jethiShare = Math.round(totalInc * jethiPct / 100);
       const bhagyoShare = Math.round(totalInc * bhagyoPct / 100);
@@ -1247,7 +1249,7 @@ function handleAction(action, dataset) {
       });
 
       // Reset settle form
-      state.settleForm = { note: '', jethiPercent: 50, deductUdhar: false, deductAmount: '' };
+      state.settleForm = { note: '', deductUdhar: false, deductAmount: '' };
       state.activeTab = 'history';
       state.expandedSettlement = settlementId;
       render();
@@ -1269,7 +1271,7 @@ function resetFormStates() {
   state.expForm = { date: todayStr(), category: EXPENSE_CATEGORIES[0], amount: '', note: '' };
   state.incForm = { date: todayStr(), crop: '', qty: '', unit: UNITS[0], rate: '', note: '' };
   state.udharForm = { date: todayStr(), type: 'given', amount: '', note: '' };
-  state.settleForm = { note: '', jethiPercent: 50, deductUdhar: false, deductAmount: '' };
+  state.settleForm = { note: '', deductUdhar: false, deductAmount: '' };
   state.confirmDelete = null;
   state.expandedSettlement = null;
   state.saveError = false;
