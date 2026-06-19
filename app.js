@@ -336,7 +336,7 @@ function renderApp() {
     { key: 'dashboard', icon: 'sprout', label: 'Dashboard' },
     { key: 'expenses', icon: 'wallet', label: 'Kharch' },
     { key: 'income', icon: 'trending-up', label: 'Aavak' },
-    { key: 'udhar', icon: 'hand-coins', label: 'Udhar' },
+    { key: 'udhar', icon: 'hand-coins', label: 'Upad' },
     { key: 'settlement', icon: 'calculator', label: 'Vahenchani' },
     { key: 'history', icon: 'history', label: 'History' }
   ];
@@ -442,7 +442,7 @@ function renderDashboard(farm) {
         let icon = '', label = '', amtClass = '';
         if (a._type === 'expense') { icon = 'wallet'; label = a.category || 'Expense'; amtClass = 'amt-red'; }
         else if (a._type === 'income') { icon = 'trending-up'; label = a.crop || 'Income'; amtClass = 'amt-green'; }
-        else { icon = 'hand-coins'; label = `Udhar (${a.type})`; amtClass = a.type === 'given' ? 'amt-amber' : 'amt-green'; }
+        else { icon = 'hand-coins'; label = `Upad (${a.type})`; amtClass = a.type === 'given' ? 'amt-amber' : 'amt-green'; }
         return `
           <div class="activity-row">
             <i data-lucide="${icon}" style="width:16px;height:16px;"></i>
@@ -619,7 +619,7 @@ function renderUdhar(farm) {
   const sorted = getSortedUdhars(farm);
 
   const rows = sorted.length === 0
-    ? '<p class="empty-text">No udhar entries.</p>'
+    ? '<p class="empty-text">No upad entries.</p>'
     : sorted.map(u => renderDeleteRow(u, 'udhar', `
         <div class="entry-main">
           <span class="entry-cat udhar-type-${u.type}">${u.type === 'given' ? '↑ Given' : '↓ Repaid'}</span>
@@ -631,11 +631,11 @@ function renderUdhar(farm) {
   return `
     <div class="tab-section">
       <div class="udhar-balance-banner">
-        <span>Udhar Balance</span>
+        <span>Upad Balance</span>
         <strong>${fmt(udharBal)}</strong>
       </div>
       <div class="section-card">
-        <h3 class="section-title"><i data-lucide="plus" style="width:16px;height:16px;"></i> Add Udhar</h3>
+        <h3 class="section-title"><i data-lucide="plus" style="width:16px;height:16px;"></i> Add Upad</h3>
         <div class="toggle-row">
           <button class="toggle-btn ${f.type === 'given' ? 'active given' : ''}" data-action="setUdharType" data-type="given">Given</button>
           <button class="toggle-btn ${f.type === 'repaid' ? 'active repaid' : ''}" data-action="setUdharType" data-type="repaid">Repaid</button>
@@ -655,11 +655,11 @@ function renderUdhar(farm) {
           <input type="text" class="input" id="udharNote" placeholder="Optional" value="${esc(f.note)}">
         </div>
         <button class="btn btn-primary btn-block" data-action="addUdhar">
-          <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Udhar
+          <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Upad
         </button>
       </div>
       <div class="section-card">
-        <h3 class="section-title">Udhar Ledger</h3>
+        <h3 class="section-title">Upad Ledger</h3>
         ${rows}
       </div>
     </div>`;
@@ -702,7 +702,7 @@ function renderSettlement(farm) {
             <span class="summary-value amt-red">${fmt(totalExp)}</span>
           </div>
           <div class="summary-col">
-            <span class="summary-label">Udhar</span>
+            <span class="summary-label">Upad</span>
             <span class="summary-value amt-amber">${fmt(udharBal)}</span>
           </div>
         </div>
@@ -719,16 +719,16 @@ function renderSettlement(farm) {
         <div class="share-card share-bhagyo">
           <h4>${esc(farm.bhagyoName || 'Bhagyo')} (${bhagyoPct}%)</h4>
           <div class="share-amount">${fmt(bhagyoShare)}</div>
-          ${deductAmt > 0 ? `<div class="deduct-note">Udhar: ${fmt(deductAmt)}</div>` : ''}
+          ${deductAmt > 0 ? `<div class="deduct-note">Upad: ${fmt(deductAmt)}</div>` : ''}
           ${deductAmt > 0 ? `<div class="deduct-note"><strong>Net: ${fmt(finalBhagyo)}</strong></div>` : ''}
         </div>
       </div>
 
       <div class="section-card">
-        <h3 class="section-title">Udhar Deduction</h3>
+        <h3 class="section-title">Upad Deduction</h3>
         <label class="checkbox-label">
           <input type="checkbox" id="settleDeductUdhar" ${f.deductUdhar ? 'checked' : ''}>
-          Deduct Udhar from Bhagyo's share
+          Deduct Upad from Bhagyo's share
         </label>
         ${f.deductUdhar ? `
           <div class="form-group" style="margin-top:8px;">
@@ -795,7 +795,7 @@ function renderHistory(farm) {
             <div class="share-card share-bhagyo">
               <h4>${esc(s.bhagyoName || 'Bhagyo')} (${s.bhagyoPercent}%)</h4>
               <div class="share-amount">${fmt(s.bhagyoShare)}</div>
-              ${s.deductAmount ? `<div class="deduct-note">Udhar: ${fmt(s.deductAmount)}</div>` : ''}
+              ${s.deductAmount ? `<div class="deduct-note">Upad: ${fmt(s.deductAmount)}</div>` : ''}
               <div class="deduct-note"><strong>Net: ${fmt(s.finalBhagyo != null ? s.finalBhagyo : s.bhagyoShare - (s.deductAmount || 0))}</strong></div>
             </div>
           </div>
