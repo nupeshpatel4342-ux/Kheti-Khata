@@ -417,11 +417,18 @@ function renderDashboard(farm) {
   const ui = getUnsettledIncomes(farm);
   const totalExp = getTotalExpense(ue);
   const totalInc = getTotalIncome(ui);
-  const profit = totalInc - totalExp;
   const udharBal = getUdharGiven(farm) - getUdharRepaid(farm);
   const recent = getRecentActivity(farm);
 
-  const profitClass = profit >= 0 ? 'stat-green' : 'stat-red';
+  // Bhag system: Income split by %, Farmer bears kharch, Bhagyo has udhar deducted
+  const farmerPct = Number(state.settleForm.jethiPercent) || 50;
+  const bhagyoPct = 100 - farmerPct;
+  const farmerGross = Math.round(totalInc * farmerPct / 100);
+  const bhagyoGross = Math.round(totalInc * bhagyoPct / 100);
+  const farmerNet = farmerGross - totalExp;
+  const bhagyoNet = bhagyoGross - udharBal;
+  const farmerNetClass = farmerNet >= 0 ? 'stat-green' : 'stat-red';
+  const bhagyoNetClass = 'stat-amber';
 
   const activityList = recent.length === 0
     ? '<p class="empty-text">No activity yet.</p>'
@@ -444,25 +451,25 @@ function renderDashboard(farm) {
   return `
     <div class="dashboard">
       <div class="stat-grid">
-        <div class="stat-card stat-red">
-          <div class="stat-icon"><i data-lucide="wallet" style="width:22px;height:22px;"></i></div>
-          <div class="stat-label">Current Kharch</div>
-          <div class="stat-value">${fmt(totalExp)}</div>
-        </div>
         <div class="stat-card stat-green">
           <div class="stat-icon"><i data-lucide="trending-up" style="width:22px;height:22px;"></i></div>
-          <div class="stat-label">Current Aavak</div>
+          <div class="stat-label">Total Aavak</div>
           <div class="stat-value">${fmt(totalInc)}</div>
         </div>
-        <div class="stat-card ${profitClass}">
-          <div class="stat-icon"><i data-lucide="sprout" style="width:22px;height:22px;"></i></div>
-          <div class="stat-label">Current Profit</div>
-          <div class="stat-value">${fmt(profit)}</div>
+        <div class="stat-card stat-red">
+          <div class="stat-icon"><i data-lucide="wallet" style="width:22px;height:22px;"></i></div>
+          <div class="stat-label">Total Kharch</div>
+          <div class="stat-value">${fmt(totalExp)}</div>
         </div>
-        <div class="stat-card stat-amber">
+        <div class="stat-card ${farmerNetClass}">
+          <div class="stat-icon"><i data-lucide="sprout" style="width:22px;height:22px;"></i></div>
+          <div class="stat-label">${esc(farm.jethiName || 'Farmer')} Net</div>
+          <div class="stat-value">${fmt(farmerNet)}</div>
+        </div>
+        <div class="stat-card ${bhagyoNetClass}">
           <div class="stat-icon"><i data-lucide="hand-coins" style="width:22px;height:22px;"></i></div>
-          <div class="stat-label">Udhar Balance</div>
-          <div class="stat-value">${fmt(udharBal)}</div>
+          <div class="stat-label">${esc(farm.bhagyoName || 'Bhagyo')} Net</div>
+          <div class="stat-value">${fmt(bhagyoNet)}</div>
         </div>
       </div>
       <div class="section-card">
@@ -659,15 +666,16 @@ function renderSettlement(farm) {
   const ui = getUnsettledIncomes(farm);
   const totalExp = getTotalExpense(ue);
   const totalInc = getTotalIncome(ui);
-  const profit = totalInc - totalExp;
   const udharBal = getUdharGiven(farm) - getUdharRepaid(farm);
 
   const f = state.settleForm;
   const jethiPct = Number(f.jethiPercent) || 0;
   const bhagyoPct = 100 - jethiPct;
 
-  const jethiShare = Math.round(profit * jethiPct / 100);
-  const bhagyoShare = Math.round(profit * bhagyoPct / 100);
+  // Bhag system: split INCOME (not profit), Farmer bears kharch, Bhagyo has udhar deducted
+  const jethiShare = Math.round(totalInc * jethiPct / 100);
+  const bhagyoShare = Math.round(totalInc * bhagyoPct / 100);
+  const farmerNet = jethiShare - totalExp;
 
   const deductAmt = f.deductUdhar ? (Number(f.deductAmount) || 0) : 0;
   const finalBhagyo = bhagyoShare - deductAmt;
@@ -688,8 +696,8 @@ function renderSettlement(farm) {
             <span class="summary-value amt-red">${fmt(totalExp)}</span>
           </div>
           <div class="summary-col">
-            <span class="summary-label">Profit</span>
-            <span class="summary-value ${profit >= 0 ? 'amt-green' : 'amt-red'}">${fmt(profit)}</span>
+            <span class="summary-label">Udhar</span>
+            <span class="summary-value amt-amber">${fmt(udharBal)}</span>
           </div>
         </div>
       </div>
@@ -706,10 +714,14 @@ function renderSettlement(farm) {
         <div class="share-card share-farmer">
           <h4>${esc(farm.jethiName || 'Farmer')} (${jethiPct}%)</h4>
           <div class="share-amount">${fmt(jethiShare)}</div>
+          <div class="deduct-note">Kharch: ${fmt(totalExp)}</div>
+          <div class="deduct-note"><strong>Net: ${fmt(farmerNet)}</strong></div>
         </div>
         <div class="share-card share-bhagyo">
           <h4>${esc(farm.bhagyoName || 'Bhagyo')} (${bhagyoPct}%)</h4>
           <div class="share-amount">${fmt(bhagyoShare)}</div>
+          ${deductAmt > 0 ? `<div class="deduct-note">Udhar: ${fmt(deductAmt)}</div>` : ''}
+          ${deductAmt > 0 ? `<div class="deduct-note"><strong>Net: ${fmt(finalBhagyo)}</strong></div>` : ''}
         </div>
       </div>
 
@@ -778,12 +790,14 @@ function renderHistory(farm) {
             <div class="share-card share-farmer">
               <h4>${esc(s.jethiName || 'Farmer')} (${s.jethiPercent}%)</h4>
               <div class="share-amount">${fmt(s.jethiShare)}</div>
+              <div class="deduct-note">Kharch: ${fmt(s.totalExpense)}</div>
+              <div class="deduct-note"><strong>Net: ${fmt(s.farmerNet != null ? s.farmerNet : s.jethiShare - s.totalExpense)}</strong></div>
             </div>
             <div class="share-card share-bhagyo">
               <h4>${esc(s.bhagyoName || 'Bhagyo')} (${s.bhagyoPercent}%)</h4>
               <div class="share-amount">${fmt(s.bhagyoShare)}</div>
-              ${s.deductAmount ? `<div class="deduct-note">Udhar Deducted: ${fmt(s.deductAmount)}</div>` : ''}
-              ${s.deductAmount ? `<div class="deduct-note">Final: ${fmt(s.finalBhagyo)}</div>` : ''}
+              ${s.deductAmount ? `<div class="deduct-note">Udhar: ${fmt(s.deductAmount)}</div>` : ''}
+              <div class="deduct-note"><strong>Net: ${fmt(s.finalBhagyo != null ? s.finalBhagyo : s.bhagyoShare - (s.deductAmount || 0))}</strong></div>
             </div>
           </div>
           <h4 class="history-sub">Expenses (${relExpenses.length})</h4>
@@ -799,7 +813,7 @@ function renderHistory(farm) {
         <button class="history-header" data-action="toggleSettlement" data-id="${s.id}">
           <div>
             <div class="history-title">${fmtDate(s.date)}</div>
-            <div class="history-meta">Aavak: ${fmt(s.totalIncome)} · Kharch: ${fmt(s.totalExpense)} · Profit: ${fmt(s.profit)}</div>
+            <div class="history-meta">Aavak: ${fmt(s.totalIncome)} · Kharch: ${fmt(s.totalExpense)}</div>
           </div>
           <i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}" style="width:18px;height:18px;"></i>
         </button>
@@ -1177,11 +1191,12 @@ function handleAction(action, dataset) {
 
       const totalExp = getTotalExpense(ue);
       const totalInc = getTotalIncome(ui);
-      const profit = totalInc - totalExp;
       const jethiPct = Number(state.settleForm.jethiPercent) || 0;
       const bhagyoPct = 100 - jethiPct;
-      const jethiShare = Math.round(profit * jethiPct / 100);
-      const bhagyoShare = Math.round(profit * bhagyoPct / 100);
+      // Bhag system: split INCOME, not profit
+      const jethiShare = Math.round(totalInc * jethiPct / 100);
+      const bhagyoShare = Math.round(totalInc * bhagyoPct / 100);
+      const farmerNet = jethiShare - totalExp;
       const deductAmt = state.settleForm.deductUdhar ? (Number(state.settleForm.deductAmount) || 0) : 0;
       const finalBhagyo = bhagyoShare - deductAmt;
 
@@ -1191,11 +1206,11 @@ function handleAction(action, dataset) {
         date: todayStr(),
         totalExpense: totalExp,
         totalIncome: totalInc,
-        profit,
         jethiPercent: jethiPct,
         bhagyoPercent: bhagyoPct,
         jethiShare,
         bhagyoShare,
+        farmerNet,
         deductAmount: deductAmt,
         finalBhagyo,
         jethiName: farm.jethiName,
